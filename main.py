@@ -23,6 +23,9 @@ client = MongoClient(os.environ["MONGO_URI"])
 # db = client["ISIS*******"]
 db = client["ISIS2304A14202620"]
 
+def serializar_doc(doc: dict) -> dict:
+    doc["_id"] = str(doc["_id"])
+    return doc
 
 @app.get("/")
 def inicio():
@@ -30,19 +33,38 @@ def inicio():
 
 @app.get('/bares/{bar_id}/comentarios')
 def get_comentarios(bar_id: int):
-    comentarios = None  # TODO: completar
+    comentarios = [
+        serializar_doc(c)
+        for c in db["comentarios_bares"].find({"bar_id": bar_id})
+    ]  
+    # TODO: completar
     return comentarios
 
 @app.post('/bares/{bar_id}/comentarios')
 def post_comentario(bar_id: int, datos: dict):
     datos['bar_id'] = bar_id
     datos['fecha']  = datetime.now().isoformat()
+    resultado = db["comentarios_bares"].insert_one(datos)
+    datos["_id"] = str(resultado.inserted_id)
     # TODO: completar
-    return {'mensaje': 'Comentario guardado'}
+    return {'mensaje': 'Comentario guardado', "comentario": datos}
 
 # TODO: implementar GET /bares/{bar_id}/eventos
 # Debe retornar todos los eventos del bar desde la colección 'eventos'
-
+@app.get("/bares/{bar_id}/eventos")
+def get_eventos(bar_id: int):
+    eventos = [
+        serializar_doc(e)
+        for e in db["eventos"].find({"bar_id": bar_id})
+    ]
+    return eventos
 # TODO: implementar POST /bares/{bar_id}/eventos  
 # Debe insertar el evento en la colección 'eventos'
 # Recuerde agregar bar_id y fecha_creacion al documento antes de insertar
+@app.post("/bares/{bar_id}/eventos")
+def post_evento(bar_id: int, datos: dict):
+    datos["bar_id"] = bar_id
+    datos["fecha_creacion"] = datetime.now().isoformat()
+    resultado = db["eventos"].insert_one(datos)
+    datos["_id"] = str(resultado.inserted_id)
+    return {"mensaje": "Evento guardado", "evento": datos}
